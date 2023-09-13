@@ -1,0 +1,143 @@
+---
+title: "CloudOS User Training - Interactive Analysis (RStudio)"
+output: html_document
+date: "2023-06-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The structure of this notebook follows the structure of the training session:
+For every workflow or set of tasks, the trainers will first walk you through it, and show you how it s carried out Step-by-Step. The code for the step-by-step explanation of every workflow is available in corresponding step-by-step sections of this notebook.
+
+## Work interactively in RStudio - I
+### Step-by-step
+- Create a bew Rstudio session, loading in your cohort 
+- Install and load libraries
+- Read in our dataset
+- Run an analysis over the data and create a plot
+
+```{r cars}
+install.packages("survival")
+install.packages("ggplot2")
+install.packages("ggfortify")
+install.packages("plotly")
+install.packages("dplyr")
+install.packages("tidyverse")
+install.packages("DT")
+install.packages("shiny")
+
+library(survival)
+library(ggplot2)
+library(ggfortify)
+library(plotly)
+library(dplyr)
+library(tidyverse)
+library(DT)
+library(shiny)
+```
+
+```{r}
+data <- read.csv("synthetic_dataset.csv", header=TRUE)
+```
+
+
+```{r}
+head(data)
+```
+
+```{r}
+# Summary Statistics 
+summary(data[c("height", "weight", "BMI" )]) 
+
+# Bar plot for categorical variables 
+
+barplot(table(data$sex), main = "Distribution by Sex" )
+barplot(table(data$ethnicity), main = "Distribution by Sex")
+barplot(table(data$vitalstatus), main = "Distribution by Vital Status")
+barplot(table(data$cancer_disease_type), main = "Distribution by Cancer Disease Type")
+barplot(table(data$smoking_status), main = "Distribution by Smoking Status")
+
+```
+#Exercises 
+
+1. Create a binary classification model using logistic regression to precict vital status based on: 
+- sex 
+- ethnicityname 
+- cancer_disease_type
+- smoking_status
+
+Before fitting the model, convert vitalstatus to a binary variable 
+
+```{r, echo=FALSE}
+# Solution 1 
+
+#Convert vitalstatus to a binary variable 
+data$vital_status_alive <- ifelse(data$vitalstatus == "A", 1, 0)
+
+#Fitting the model, printing the summary as an output 
+model <- glm(vital_status_alive ~ sex + ethnicityname + cancer_disease_type + smoking_status, data=data, family = binomial)
+summary(model)
+
+```
+
+2. Create a regression model to predict BMI based on: 
+- height
+- weight 
+- smoking_status
+- alcohol_consumption 
+
+```{r}
+# Regression model: predicting BMI 
+
+model <- lm(BMI ~ height + weight + smoking_status + alcohol_consumption, data = data)
+
+summary(model)
+
+```
+
+3. Create an interactive plot of height vs weight, with the points colored by cancer_disease_sub_type 
+
+```{r}
+# Interactive scatter plot with plotly 
+
+# Load the magrittr package
+library(magrittr)
+
+
+plot_ly(data = data, x = ~height, y = ~weight, color= ~cancer_disease_sub_type,
+        type = "scatter", mode = "markers", marker = list(size = 10)) %>%
+  layout(xaxis = list(title = "Height"), yaxis = list(title = "Weight"))
+
+```
+4. Run this kernel to see how you can create a mini app with your plot and interactive output 
+
+```{r}
+#Interactive filtering with Shiny 
+
+
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("disease_type", "Cancer Disease Type", choices = unique(data$cancer_disease_type))
+    )
+    , 
+    mainPanel(
+      plotlyOutput("scatter_plot")
+    )
+  ))
+
+  server <- function(input, output) {
+    output$scatter_plot <- renderPlotly({
+      filtered_data <- subset(data, cancer_disease_type == input$disease_type)
+
+      plot <- plot_ly(data = filtered_data, x = ~height, y= ~weight, color = ~cancer_disease_sub_type,
+        type = "scatter", mode = "markers", marker = list(size = 10)) %>% 
+        layout(xaxis = list(title = "Height"), yaxis = list(title = "Weight"))
+    })
+  }
+  
+  shinyApp(ui,server)
+
+``` 
